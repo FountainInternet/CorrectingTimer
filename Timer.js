@@ -78,11 +78,13 @@
     *   @constructor
     *   @param {Function} onTick The tick function.
     *   @param {Number} interval The tick duration.
+    *   @param {Function} onComplete The function to be called on timer completion.
     *   @returns {Timer} The instance of timer.
     */
-    var Timer = function(onTick, interval) {
+    var Timer = function(onTick, interval, onComplete) {
         this.setInterval(interval);
         this.setOnTick(onTick);
+        this.setOnComplete(onComplete || function() {});
         
         this._timer = null;
         this._active = false;
@@ -96,7 +98,7 @@
     *   The tick function is called with one argument, the drift amount (int).
     *   @returns {Timer} this.
     */
-    Timer.prototype.start = function() {
+    Timer.prototype.start = function(timeToComplete) {
         
         var drift = 0,
             currentTime = 0,
@@ -117,7 +119,14 @@
             actual = now() - that._startTime;
             
             drift = actual - ideal;
-            
+
+            if (actual < timeToComplete) {
+                that._active = true;
+            } else {
+                that.stop();
+                that._onComplete();
+            }
+
             if(that._active) {
                 setTimeout(onTick, that._interval - drift);
             }
@@ -158,7 +167,8 @@
         this._interval = ms;
         return this;
     };
-    
+
+
     /**
     *   Allow for replacement of the tick function, even whilst the timer
     *   is running.
@@ -169,9 +179,19 @@
         this._onTick = onTick;
         return this;
     };
-    
-    
-    
+
+
+    /**
+     *   When timer completion period has elapsed, call the onComplete function
+     *   @param {Function} onComplete The function to be called on timer completion.
+     *   @returns {Timer} this.
+     */
+    Timer.prototype.setOnComplete = function(onComplete) {
+        this._onComplete = onComplete;
+        return this;
+    };
+
+
     /**
     *   Allow the `Timer` constructor to be used as a replacement for 
     *   setInterval.
